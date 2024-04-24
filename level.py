@@ -83,7 +83,7 @@ class Level:
                                 Enemy(monster_name, (x,y) ,
                                       [self.visible_sprites , self.attackable_sprites] , 
                                       self.obstacle_sprites ,
-                                      self.damage_player()
+                                      self.damage_player
                                       )
         
     def player_attack_logic(self):
@@ -111,10 +111,10 @@ class Level:
             self.current_attack.kill()
         self.current_attack = None
     
-    def damage_player(self, amount, attack_type):
+    def damage_player(self,amount, attack_type):
         if self.player.vulnerable:
             self.player.health -= amount
-            self.player.vurnerable = False
+            self.player.vulnerable = False
             self.player.hurt_time = pygame.time.get_ticks()
             
     
@@ -162,3 +162,4 @@ class YSortCameraGroup(pygame.sprite.Group):
                          and sprite.sprite_type == 'enemy']
         for enemy in enemy_sprites:
             enemy.enemy_update(player)
+            

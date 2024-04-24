@@ -1,8 +1,9 @@
 import pygame
 from settings import *
 from support import import_folder
+from entity import Entity
 
-class Player(pygame.sprite.Sprite):
+class Player(Entity):
     def __init__(self, pos, groups,obstacle_sprites, create_attack, destroy_attack, create_magic):
         super().__init__(groups)
         self.image = pygame.image.load('./graphics/test/player.png').convert_alpha()
@@ -12,11 +13,8 @@ class Player(pygame.sprite.Sprite):
         # graphics setup
         self.import_player_asset()
         self.status = 'down'
-        self.frame_index = 0 
-        self.animation_speed = 0.15
 
         # movement
-        self.direction = pygame.math.Vector2()
         self.attack = False
         self.attack_cooldown = 400
         self.attack_time = 0
@@ -135,6 +133,7 @@ class Player(pygame.sprite.Sprite):
                 self.magic_index = 0
             self.magic = list(magic_data.keys())[self.magic_index]
             print('magic')
+   
     def move(self, speed):
         if self.direction.magnitude() != 0:
             self.direction = self.direction.normalize() 
@@ -165,7 +164,7 @@ class Player(pygame.sprite.Sprite):
     def cooldown(self) :
         current_time = pygame.time.get_ticks()
         if self.attack:
-            if current_time - self.attack_time >= self.attack_cooldown:
+            if current_time - self.attack_time >= self.attack_cooldown + weapon_data[self.weapon]['cooldown']:
                 self.attack = False
                 self.destroy_attack()
                 
@@ -188,6 +187,11 @@ class Player(pygame.sprite.Sprite):
         # set image 
         self.image = animation[int(self.frame_index)]
         self.rect = self.image.get_rect(center = self.hitbox.center)    
+        
+    def get_full_weapon_damage(self):
+        base_damage = self.stats['attack']
+        weapon_damage = weapon_data[self.weapon]['damage']
+        return base_damage + weapon_damage
         
     def update(self):
         self.input()

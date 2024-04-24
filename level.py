@@ -7,6 +7,7 @@ from support import *
 from random import choice
 from weapon import Weapon
 from ui import UI
+from enemy import Enemy
 class Level:
     def __init__(self):
         
@@ -17,7 +18,11 @@ class Level:
         self.obstacle_sprites = pygame.sprite.Group()
         
         # attack sprite
-        self.current_attack = None
+        self.current_attack = 0
+        self.attack_sprites = pygame.sprite.Group()
+        self.attackable_sprites = pygame.sprite.Group()
+        
+        # self.player = player
         
         # sprite setup
         self.create_map()
@@ -30,7 +35,8 @@ class Level:
         layouts = {
             'boundary' : import_csv_layout('./map/map_FloorBlocks.csv'),
             'grass' : import_csv_layout('./map/map_Grass.csv'),
-            'object' : import_csv_layout('./map/map_Objects.csv')
+            'object' : import_csv_layout('./map/map_Objects.csv'),
+            'entities' : import_csv_layout('./map/map_Entities.csv')
         }
         
         graphics = {
@@ -48,23 +54,52 @@ class Level:
                         if style == 'grass':
                             # buat lantai rumput
                             random_grass_image = choice(graphics['grass'])
-                            Tile((x,y), [self.visible_sprites, self.obstacle_sprites], 'grass', random_grass_image)
+                            Tile(
+                                (x,y), 
+                                [self.visible_sprites,
+                                 self.obstacle_sprites, 
+                                 self.attackable_sprites], 
+                                'grass', 
+                                random_grass_image)
                         if style == 'object':
-                            # buat object lantai
                             surface = graphics['objects'][int(col)]
-                            Tile((x,y), [self.visible_sprites, self.obstacle_sprites], 'object', surface)
+                            Tile((x,y), [self.visible_sprites, self.obstacle_sprites], 'object', surface) 
+
+                        if style == 'entities':
+                            if col == '394':
+                                self.player = Player(
+                                (x, y ), 
+                                [self.visible_sprites ], 
+                                self.obstacle_sprites, 
+                                self.create_attack, 
+                                self.destroy_attack,
+                                self.create_magic
+                                )
+                            else:
+                                if col == '390' : monster_name = 'bamboo'
+                                elif col == '391' : monster_name = 'spirit'
+                                elif col == '392' : monster_name = 'raccoon'
+                                else: monster_name = 'squid'
+                                Enemy(monster_name, (x,y) ,
+                                      [self.visible_sprites , self.attackable_sprites] , 
+                                      self.obstacle_sprites ,
+                                      self.damage_player()
+                                      )
         
-        self.player = Player(
-            (2000,1430), 
-            [self.visible_sprites], 
-            self.obstacle_sprites, 
-            self.create_attack, 
-            self.destroy_attack,
-            self.create_magic
-            )
+    def player_attack_logic(self):
+        if self.attack_sprites:
+            for attack_sprite in self.attack_sprites:
+                collision_sprite = pygame.sprite.spritecollide(attack_sprite , self.attackable_sprites , False)
+                if collision_sprite:
+                    for target_sprite in collision_sprite:
+                        if target_sprite.sprite_type == 'grass':
+                            target_sprite.kill()
+                        else:
+                            target_sprite.get_damage(self.player , attack_sprite.sprite_type)
+                
   
     def create_attack(self):
-        self.current_attack = Weapon(self.player, [self.visible_sprites])
+        self.current_attack = Weapon(self.player, [self.visible_sprites, self.attack_sprites])
     
     def create_magic(self, style, strength , cost):
         print(style)
@@ -76,10 +111,20 @@ class Level:
             self.current_attack.kill()
         self.current_attack = None
     
+    def damage_player(self, amount, attack_type):
+        if self.player.vulnerable:
+            self.player.health -= amount
+            self.player.vurnerable = False
+            self.player.hurt_time = pygame.time.get_ticks()
+            
+    
     def run(self): 
         self.visible_sprites.custom_draw(self.player)
         self.visible_sprites.update()
         self.ui.display(self.player)
+        self.visible_sprites.enemy_update(self.player)
+        self.player_attack_logic()
+        
         # debug(self.player.status)
         
         
@@ -111,3 +156,9 @@ class YSortCameraGroup(pygame.sprite.Group):
         for sprite in sorted(self.sprites(), key = lambda sprite: sprite.rect.centery):
             offset_pos = sprite.rect.topleft - self.offset
             self.display_surface.blit(sprite.image, offset_pos)
+
+    def enemy_update(self, player):
+        enemy_sprites = [sprite for sprite in self.sprites() if hasattr(sprite, 'sprite_type') 
+                         and sprite.sprite_type == 'enemy']
+        for enemy in enemy_sprites:
+            enemy.enemy_update(player)
